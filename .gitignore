@@ -1,0 +1,9 @@
+.venv/
+.env
+/data/
+
+.idea/
+
+__pycache__/
+.DS_Store
+
