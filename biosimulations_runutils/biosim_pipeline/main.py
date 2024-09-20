@@ -26,6 +26,7 @@ app = typer.Typer(cls=NaturalOrderGroup)
 @app.command("upload_omex", help="(1) upload and run OMEX files at BioSimulations")
 def upload_omex(
         simulator: Annotated[Simulator, typer.Option(help="simulator to run")] = Simulator.vcell,
+        simulator_version: Annotated[str, typer.Option(help="simulator version to run - defaults to 'latest'")] = "latest",
         project_id: Annotated[Union[str, None], typer.Option(help="filter by project_id")] = None,
         omex_src_dir: Annotated[Union[Path, None], typer.Option(help="defaults env.OMEX_SOURCE_DIR")] = None,
         out_dir: Annotated[Union[Path, None], typer.Option(help="defaults to env.OMEX_OUTPUT_DIR")] = None
@@ -42,7 +43,7 @@ def upload_omex(
         if project_id is not None and source_omex.project_id != project_id:
             continue
         print(source_omex.project_id)
-        run_project(source_omex=source_omex, simulator=simulator, data_manager=data_manager)
+        run_project(source_omex=source_omex, simulator=simulator, simulator_version=simulator_version, data_manager=data_manager)
 
 
 @app.command("refresh_status", help="(2) fetch status of runs and update biosimulations_runs.ndjson")
