@@ -25,16 +25,32 @@ app = typer.Typer(cls=NaturalOrderGroup)
 
 @app.command("upload_omex", help="(1) upload and run OMEX files at BioSimulations")
 def upload_omex(
-        simulator: Annotated[Simulator, typer.Option(help="simulator to run")] = Simulator.vcell,
+        simulator: Annotated[Simulator, typer.Option(help="simulator to run")] = None,
         simulator_version: Annotated[str, typer.Option(help="simulator version to run - defaults to 'latest'")] = "latest",
         project_id: Annotated[Union[str, None], typer.Option(help="filter by project_id")] = None,
         omex_src_dir: Annotated[Union[Path, None], typer.Option(help="defaults env.OMEX_SOURCE_DIR")] = None,
-        out_dir: Annotated[Union[Path, None], typer.Option(help="defaults to env.OMEX_OUTPUT_DIR")] = None
+        out_dir: Annotated[Union[Path, None], typer.Option(help="defaults to env.OMEX_OUTPUT_DIR")] = None,
+        redo: Annotated[Union[str, None], typer.Option(help="Whether to re-run all files in directory ('all'), nothing that was already run before ('none'), or only new and previously-failed runs ('failed')")] = "all"
 ) -> None:
     load_dotenv()
     data_manager = DataManager(omex_src_dir=omex_src_dir, out_dir=out_dir)
+    
+    if simulator_version is not None and simulator is None:
+        raise ValueError("Unable to set simulator_version without specifying a single simulator.")
 
     projects = data_manager.read_projects()
+    runs: list[SimulationRun] = data_manager.read_run_requests()
+    previous = set()
+    if redo == "none":
+        for run in runs:
+            previous.add((run.simulator, run.project_id))
+    elif redo == "failed":
+        for run in runs:
+            if run.status.lower()!="failed":
+                previous.add((run.simulator, run.project_id))
+    elif redo != "all":
+        raise ValueError(f"Unknown 'redo' option {redo}: valid options are 'all', 'new', and 'failed'")
+
 
     for source_omex in data_manager.get_source_omex_archives():
         if source_omex.project_id in projects:
@@ -43,7 +59,19 @@ def upload_omex(
         if project_id is not None and source_omex.project_id != project_id:
             continue
         print(source_omex.project_id)
-        run_project(source_omex=source_omex, simulator=simulator, simulator_version=simulator_version, data_manager=data_manager)
+        if simulator is not None:
+            if (simulator, source_omex.project_id) in previous:
+                print(f"project {source_omex.project_id} has been run before using {simulator}.")
+                continue
+            print("Running", source_omex.project_id, "on", simulator)
+            run_project(source_omex=source_omex, simulator=simulator, simulator_version=simulator_version, data_manager=data_manager)
+        else:
+            for sim in [Simulator.tellurium, Simulator.vcell, Simulator.amici, Simulator.pysces, Simulator.libsbmlsim, Simulator.copasi]:
+                if (sim, source_omex.project_id) in previous:
+                    print(f"project {source_omex.project_id} has been run before using {simulator}.")
+                    continue
+                print("Running", source_omex.project_id, "on", sim)
+                run_project(source_omex=source_omex, simulator=simulator, simulator_version=simulator_version, data_manager=data_manager)
 
 
 @app.command("refresh_status", help="(2) fetch status of runs and update biosimulations_runs.ndjson")
@@ -54,10 +82,17 @@ def refresh_status(
     data_manager = DataManager(out_dir=out_dir)
 
     runs: list[SimulationRun] = data_manager.read_run_requests()
+    alldone = True
     for run in runs:
         if run.status is not None and (run.status.lower() == "succeeded" or run.status.lower() == "failed"):
             continue
+        print("Checking", run)
         run.status = check_run_status(run)
+        print("New status:", run.status)
+        if not (run.status is not None and (run.status.lower() == "succeeded" or run.status.lower() == "failed")):
+            alldone = False
+    if alldone:
+        print("All runs have now either succeeded or failed.")
     data_manager.write_runs(runs)
 
 
