@@ -34,7 +34,8 @@ def check_run_status(simulation_run: SimulationRun) -> str:
 def run_project(
         source_omex: SourceOmex,
         simulator: Simulator,
-        data_manager: DataManager) -> None:
+        data_manager: DataManager,
+        simulator_version: str) -> None:
     """
     This function runs the project on biosimulations.
     """
@@ -44,7 +45,7 @@ def run_project(
     simulation_run_request = _SimulationRunApiRequest(
         name=source_omex.project_id,
         simulator=simulator,
-        simulatorVersion='latest',
+        simulatorVersion=simulator_version,
         maxTime=600,
     )
 
