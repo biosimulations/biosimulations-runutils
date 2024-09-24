@@ -33,29 +33,43 @@ def get_results(results_zip_file: Path) -> dict[str, dict[str, np.ndarray]]:
     return results
 
 
-def compare_arrays(arr1: np.ndarray, arr2: np.ndarray) -> bool:
+def compare_arrays(arr1: np.ndarray, arr2: np.ndarray) -> (bool, float):
     if type(arr1[0]) == np.float64:
         max1 = max(arr1)
         max2 = max(arr2)
         atol = max(1e-3, max1*1e-5, max2*1e-5)
-        return np.allclose(arr1, arr2, rtol=1e-4, atol=atol)
+        if np.isnan(arr1).any() or np.isnan(arr2).any():
+            return (False, 1e11) # Nan's won't match in np.allclose().
+        rtol = 1e-3
+        close = np.allclose(arr1, arr2, rtol=rtol, atol=atol)
+        scorevec = abs(arr1 - arr2) / (atol + rtol * abs(arr2))
+        maxscore = max(scorevec)
+        if maxscore < 1 and  not close:
+            raise ValueError("maxscore =", maxscore, "but allclose is false.  arr1 =", arr1, "arr2 =", arr2, "atol=", atol, "scorevec =", scorevec)
+        return (close, maxscore)
+    maxscore = 0
+    allclose = True
     for n in range(len(arr1)):
-        if not compare_arrays(arr1[n], arr2[n]):
-            return False
-    return True
+        (close, score)  = compare_arrays(arr1[n], arr2[n])
+        allclose = allclose and close
+        maxscore = max(maxscore, score)
+    return (allclose, maxscore)
 
 
-def compare_datasets(results1: dict[str, dict[str, np.ndarray]], results2: dict[str, dict[str, np.ndarray]]) -> bool:
+def compare_datasets(results1: dict[str, dict[str, np.ndarray]], results2: dict[str, dict[str, np.ndarray]]) -> (bool, float):
+    allclose = True
+    maxscore = 0
     for h5_file_path in results1:
         if h5_file_path not in results2:
-            return False
+            return (False, 1e10)
         for dataset_name in results1[h5_file_path]:
             if dataset_name not in results2[h5_file_path]:
-                return False
+                return (False, 1e10)
             arr1 = results1[h5_file_path][dataset_name]
             arr2 = results2[h5_file_path][dataset_name]
             if arr1.shape != arr2.shape:
-                return False
-            if not compare_arrays(arr1, arr2):
-                return False
-    return True
+                return (False, 1e10)
+            (close, score) = compare_arrays(arr1, arr2)
+            allclose = allclose and close
+            maxscore = max(maxscore, score)
+    return (allclose, maxscore)

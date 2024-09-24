@@ -37,5 +37,6 @@ class SimulatorComparison(BaseModel):
     simRun1: SimulationRun
     simRun2: SimulationRun
     equivalent: bool
+    score: float
 
 

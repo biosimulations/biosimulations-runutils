@@ -1,11 +1,11 @@
 [tool.poetry]
 name = "biosimulations_runutils"
 version = "0.1.0"
-description = "Python general utility package for VCell"
-authors = ["Virtual Cell"]
+description = "Python general utility package"
+authors = ["Jim Schaff", "Lucian Smith", "Center for Reproducible Biomedical Modeling"]
 license = "MIT"
-repository = "https://github.com/virtualcell/vcell"
-keywords = ["HDF5", "SBML", "VCell"]
+repository = "https://github.com/biosimulations/biosimulations-runutils/"
+keywords = ["HDF5", "SBML", "OMEX", "SED-ML"]
 classifiers = [
     'Development Status :: 3 - Alpha',
     'Intended Audience :: Science/Research',
@@ -15,6 +15,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3 :: Only",
 ]
 

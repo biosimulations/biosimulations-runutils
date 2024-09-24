@@ -172,19 +172,19 @@ def compare_runs(
                     continue
                 results2 = get_results(zip2)
 
-                equivalent = compare_datasets(results1, results2)
+                (equivalent, score) = compare_datasets(results1, results2)
+                if not equivalent and score < 1:
+                    raise ValueError("maxscore =", score, "but allclose is false.  arr1 =", results1, "arr2 =", results2)
                 comp_12 = SimulatorComparison.model_construct(project_id=proj_id, simRun1=run1, simRun2=run2,
-                                                              equivalent=equivalent)
+                                                              equivalent=equivalent, score=score)
                 comp_21 = SimulatorComparison.model_construct(project_id=proj_id, simRun1=run2, simRun2=run1,
-                                                              equivalent=equivalent)
+                                                              equivalent=equivalent, score=score)
                 if any(p.model_dump_json() in (comp_12.model_dump_json(), comp_21.model_dump_json())
                        for p in data_manager.read_comparisons()):
                     continue
                 data_manager.write_comparison(comp_12)
-                print(
-                    f"project {proj_id}, comparing {run1.simulator}:{run1.simulator_version} <=> {run2.simulator}:{run2.simulator_version}, equivalent:",
-                    equivalent)
-
+                print(f"project {proj_id}, comparing {run1.simulator}:{run1.simulator_version} <=> {run2.simulator}:{run2.simulator_version}, equivalent:",
+                    equivalent, "score:", score)
 
 def _pick_one(project_id: str, validated: list[SimulationRun]) -> SimulationRun:
     if len(validated) == 0:
