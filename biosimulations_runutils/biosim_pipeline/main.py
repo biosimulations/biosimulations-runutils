@@ -35,8 +35,8 @@ def upload_omex(
     load_dotenv()
     data_manager = DataManager(omex_src_dir=omex_src_dir, out_dir=out_dir)
     
-    if simulator_version is not None and simulator is None:
-        raise ValueError("Unable to set simulator_version without specifying a single simulator.")
+    # if simulator_version is not None and simulator is None:
+    #     raise ValueError("Unable to set simulator_version without specifying a single simulator.")
 
     projects = data_manager.read_projects()
     runs: list[SimulationRun] = data_manager.read_run_requests()
@@ -66,12 +66,12 @@ def upload_omex(
             print("Running", source_omex.project_id, "on", simulator)
             run_project(source_omex=source_omex, simulator=simulator, simulator_version=simulator_version, data_manager=data_manager)
         else:
-            for sim in [Simulator.tellurium, Simulator.vcell, Simulator.amici, Simulator.pysces, Simulator.libsbmlsim, Simulator.copasi]:
+            for sim in [Simulator.tellurium, Simulator.vcell, Simulator.amici, Simulator.pysces, Simulator.copasi]:
                 if (sim, source_omex.project_id) in previous:
                     print(f"project {source_omex.project_id} has been run before using {simulator}.")
                     continue
                 print("Running", source_omex.project_id, "on", sim)
-                run_project(source_omex=source_omex, simulator=simulator, simulator_version=simulator_version, data_manager=data_manager)
+                run_project(source_omex=source_omex, simulator=sim, simulator_version="latest", data_manager=data_manager)
 
 
 @app.command("refresh_status", help="(2) fetch status of runs and update biosimulations_runs.ndjson")
@@ -129,6 +129,15 @@ def download_runs(
         except urllib.error.HTTPError as e:
             print("Failure:", e)
 
+def _convert_comparisons_to_dict(comparisons):
+    ret = {}
+    for comparison in comparisons:
+        projid = comparison.project_id
+        if projid not in ret:
+            ret[projid] = {}
+        twosims = (comparison.simRun1.simulator, comparison.simRun2.simulator)
+        ret[projid][twosims] = comparison.equivalent
+    return ret
 
 @app.command("compare_runs", help="(4) compare downloaded runs")
 def compare_runs(
@@ -143,6 +152,7 @@ def compare_runs(
 
     # get unique list of project_ids from runs
     unique_project_ids: list[str] = [*sorted(set([run.project_id for run in runs]))]
+    prev_compare = _convert_comparisons_to_dict(data_manager.read_comparisons())
     for proj_id in unique_project_ids:
         if project_id is not None and proj_id != project_id:
             continue
@@ -164,6 +174,11 @@ def compare_runs(
 
             for j in range(i + 1, len(project_runs)):
                 run2: SimulationRun = project_runs[j]
+                twosims = (run1.simulator, run2.simulator)
+                twosimsr = (run2.simulator, run1.simulator)
+                if proj_id in prev_compare and (twosims in prev_compare[proj_id] or twosimsr in prev_compare[proj_id]):
+                    print("Already compared", proj_id, ":", run1.simulator, "with", run2.simulator)
+                    continue
                 if run2.status is not None and run2.status.lower() != "succeeded":
                     continue
                 zip2 = data_manager.get_run_output_dir(run2) / "results.zip"
@@ -172,19 +187,19 @@ def compare_runs(
                     continue
                 results2 = get_results(zip2)
 
-                equivalent = compare_datasets(results1, results2)
+                (equivalent, score) = compare_datasets(results1, results2)
+                if not equivalent and score < 1:
+                    raise ValueError("maxscore =", score, "but allclose is false.  arr1 =", results1, "arr2 =", results2)
                 comp_12 = SimulatorComparison.model_construct(project_id=proj_id, simRun1=run1, simRun2=run2,
-                                                              equivalent=equivalent)
-                comp_21 = SimulatorComparison.model_construct(project_id=proj_id, simRun1=run2, simRun2=run1,
-                                                              equivalent=equivalent)
-                if any(p.model_dump_json() in (comp_12.model_dump_json(), comp_21.model_dump_json())
-                       for p in data_manager.read_comparisons()):
-                    continue
+                                                              equivalent=equivalent, score=score)
+                # comp_21 = SimulatorComparison.model_construct(project_id=proj_id, simRun1=run2, simRun2=run1,
+                #                                              equivalent=equivalent, score=score)
+                # if any(p.model_dump_json() in (comp_12.model_dump_json(), comp_21.model_dump_json())
+                #        for p in data_manager.read_comparisons()):
+                #     continue
                 data_manager.write_comparison(comp_12)
-                print(
-                    f"project {proj_id}, comparing {run1.simulator}:{run1.simulator_version} <=> {run2.simulator}:{run2.simulator_version}, equivalent:",
-                    equivalent)
-
+                print(f"project {proj_id}, comparing {run1.simulator}:{run1.simulator_version} <=> {run2.simulator}:{run2.simulator_version}, equivalent:",
+                    equivalent, "score:", score)
 
 def _pick_one(project_id: str, validated: list[SimulationRun]) -> SimulationRun:
     if len(validated) == 0:

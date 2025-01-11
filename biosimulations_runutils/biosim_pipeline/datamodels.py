@@ -17,6 +17,8 @@ class Simulator(str, Enum):
     vcell = "vcell",
     pysces = "pysces",
     libsbmlsim = "libsbmlsim"
+    gillespy2 = "gillespy2"
+    masspy = "masspy"
 
 
 class SimulationRun(BaseModel):
@@ -37,5 +39,6 @@ class SimulatorComparison(BaseModel):
     simRun1: SimulationRun
     simRun2: SimulationRun
     equivalent: bool
+    score: float
 
 
