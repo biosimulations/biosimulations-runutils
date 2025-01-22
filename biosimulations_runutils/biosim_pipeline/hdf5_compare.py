@@ -61,7 +61,7 @@ def compare_arrays(arr1: np.ndarray, arr2: np.ndarray) -> tuple[bool, float]:
 
 
 def compare_datasets(results1: dict[str, dict[str, np.ndarray]], results2: dict[str, dict[str, np.ndarray]]) -> tuple[bool, float]:
-    maxscore = 0
+    maxscore = 0.0
     allclose = True
     for h5_file_path in results1:
         if h5_file_path not in results2:
