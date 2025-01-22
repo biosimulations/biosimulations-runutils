@@ -27,7 +27,7 @@ def check_run_status(simulation_run: SimulationRun) -> str:
     if getrun.status_code == 404:
         return "not found"
     getrun_dict = getrun.json()
-    result = getrun_dict['status']
+    result: str = getrun_dict['status']
     return result
 
 

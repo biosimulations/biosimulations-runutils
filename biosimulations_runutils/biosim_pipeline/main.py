@@ -1,23 +1,23 @@
 import os
-import urllib
-import urllib.request
 from pathlib import Path
 from typing import Annotated, Union
+from urllib.error import HTTPError
 
 import typer
+from click import Context
 from dotenv import load_dotenv
 from typer.core import TyperGroup
 
-from biosimulations_runutils.common.api_utils import download_file
 from biosimulations_runutils.biosim_pipeline.biosim_api import run_project, check_run_status, publish_project
 from biosimulations_runutils.biosim_pipeline.data_manager import DataManager
 from biosimulations_runutils.biosim_pipeline.datamodels import Simulator, SimulationRun, SimulatorComparison
 from biosimulations_runutils.biosim_pipeline.hdf5_compare import compare_datasets, get_results
+from biosimulations_runutils.common.api_utils import download_file
 
 
 class NaturalOrderGroup(TyperGroup):
-    def list_commands(self, ctx):
-        return self.commands.keys()
+    def list_commands(self, ctx: Context) -> list[str]:
+        return list(self.commands.keys())
 
 
 app = typer.Typer(cls=NaturalOrderGroup)
@@ -128,7 +128,7 @@ def download_runs(
         try:
             download_file(url=f"{api_base_url}/results/" + run.simulation_id + "/download",
                           out_file=Path(simdir / "results.zip"))
-        except urllib.error.HTTPError as e:
+        except HTTPError as e:
             print("Failure:", e)
 
 def _convert_comparisons_to_dict(comparisons: list[SimulatorComparison]) -> dict[str, dict[tuple[Simulator, Simulator], bool]]:

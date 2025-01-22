@@ -89,7 +89,7 @@ class DataManager(object):
         with open(self.runs_ndjson_file, 'a') as f:
             f.write(json.dumps(simulation_run.dict()) + "\n")
 
-    def write_runs(self, runs: list[SimulationRun]):
+    def write_runs(self, runs: list[SimulationRun]) -> None:
         with open(self.runs_ndjson_file, 'wt') as f:
             for run in runs:
                 f.write(json.dumps(run.dict()) + "\n")
@@ -108,7 +108,7 @@ class DataManager(object):
         return comparisons
 
     def get_run_output_dir(self, simulation_run: SimulationRun) -> Path:
-        run_out_dir = self.out_dir / simulation_run.project_id / simulation_run.simulator.value / simulation_run.simulator_version
+        run_out_dir: Path = self.out_dir / simulation_run.project_id / simulation_run.simulator.value / simulation_run.simulator_version
         if not os.path.exists(run_out_dir):
             os.makedirs(run_out_dir)
         return run_out_dir

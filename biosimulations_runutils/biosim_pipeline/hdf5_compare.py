@@ -3,11 +3,13 @@ from functools import partial
 from pathlib import Path
 from zipfile import ZipFile
 
-import h5py
+import h5py  # type: ignore
 import numpy as np
+from h5py import HLObject
+from numpy._typing import NDArray
 
 
-def _get_ds_dictionaries(ds_dict: dict[str, np.ndarray], _name, node):
+def _get_ds_dictionaries(ds_dict: dict[str, NDArray[np.float64]], _name: str, node: HLObject) -> None:
     # From https://stackoverflow.com/questions/70055365/hdf5-file-to-dictionary
     fullname = node.name
     if isinstance(node, h5py.Dataset):
@@ -20,20 +22,20 @@ def _get_ds_dictionaries(ds_dict: dict[str, np.ndarray], _name, node):
         # print(f'Group: {fullname}; skipping')
 
 
-def get_results(results_zip_file: Path) -> dict[str, dict[str, np.ndarray]]:
-    results: dict[str, dict[str, np.ndarray]] = {}
+def get_results(results_zip_file: Path) -> dict[str, dict[str, NDArray[np.float64]]]:
+    results: dict[str, dict[str, NDArray[np.float64]]] = {}
     with ZipFile(results_zip_file, "r") as the_zip:
         for name in the_zip.namelist():
             if "reports.h5" in name:
                 with h5py.File(the_zip.open(name)) as h5:
-                    ds_dict: dict[str, np.ndarray] = {}
+                    ds_dict: dict[str, NDArray[np.float64]] = {}
                     ds_visitor = partial(_get_ds_dictionaries, ds_dict)
                     h5.visititems(ds_visitor)
                     results[name] = copy.deepcopy(ds_dict)
     return results
 
 
-def compare_arrays(arr1: np.ndarray, arr2: np.ndarray) -> tuple[bool, float]:
+def compare_arrays(arr1: NDArray[np.float64], arr2: NDArray[np.float64]) -> tuple[bool, float]:
     # np.seterr(divide='raise')
     if type(arr1[0]) == np.float64:
         if np.isnan(arr1).any() or np.isnan(arr2).any():
@@ -60,7 +62,8 @@ def compare_arrays(arr1: np.ndarray, arr2: np.ndarray) -> tuple[bool, float]:
     return allclose, maxscore
 
 
-def compare_datasets(results1: dict[str, dict[str, np.ndarray]], results2: dict[str, dict[str, np.ndarray]]) -> tuple[bool, float]:
+def compare_datasets(results1: dict[str, dict[str, NDArray[np.float64]]],
+                     results2: dict[str, dict[str, NDArray[np.float64]]]) -> tuple[bool, float]:
     maxscore = 0.0
     allclose = True
     for h5_file_path in results1:
