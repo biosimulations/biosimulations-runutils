@@ -56,6 +56,13 @@ class DataManager(object):
             projects = []
         return projects
 
+    def get_project_ids(self) -> list[str]:
+        project_ids: list[str] = []
+        projects = self.read_projects()
+        for project in projects:
+            project_ids.push_back(project.project_id)
+        return project_ids
+
     def write_project(self, project: BiosimulationsProject) -> None:
         with open(self.projects_ndjson_file, 'a') as f:
             f.write(json.dumps(project.dict()) + "\n")

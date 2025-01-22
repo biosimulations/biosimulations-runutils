@@ -33,7 +33,7 @@ def get_results(results_zip_file: Path) -> dict[str, dict[str, np.ndarray]]:
     return results
 
 
-def compare_arrays(arr1: np.ndarray, arr2: np.ndarray) -> bool:
+def compare_arrays(arr1: np.ndarray, arr2: np.ndarray) -> tuple[bool, float]:
     # np.seterr(divide='raise')
     if type(arr1[0]) == np.float64:
         if np.isnan(arr1).any() or np.isnan(arr2).any():
@@ -46,11 +46,12 @@ def compare_arrays(arr1: np.ndarray, arr2: np.ndarray) -> bool:
             score = np.nanmax(abs(arr1 - arr2) / (atol + rtol * abs(arr2)))
         except FloatingPointError as e:
             print(e)
+            score = 1e12
         close = np.allclose(arr1, arr2, rtol=rtol, atol=atol, equal_nan=False)
         assert(score <= 1) == close
         return close, score
     # absolute(a - b) <= (atol + rtol * absolute(b))
-    maxscore = 0
+    maxscore = 0.0
     allclose = True
     for n in range(len(arr1)):
         close, score = compare_arrays(arr1[n], arr2[n])
@@ -59,7 +60,7 @@ def compare_arrays(arr1: np.ndarray, arr2: np.ndarray) -> bool:
     return allclose, maxscore
 
 
-def compare_datasets(results1: dict[str, dict[str, np.ndarray]], results2: dict[str, dict[str, np.ndarray]]) -> bool:
+def compare_datasets(results1: dict[str, dict[str, np.ndarray]], results2: dict[str, dict[str, np.ndarray]]) -> tuple[bool, float]:
     maxscore = 0
     allclose = True
     for h5_file_path in results1:

@@ -25,27 +25,29 @@ app = typer.Typer(cls=NaturalOrderGroup)
 
 @app.command("upload_omex", help="(1) upload and run OMEX files at BioSimulations")
 def upload_omex(
-        simulator: Annotated[Simulator, typer.Option(help="simulator to run")] = None,
+        simulator: Annotated[Union[Simulator, None], typer.Option(help="simulator to run")] = None,
         simulator_version: Annotated[str, typer.Option(help="simulator version to run - defaults to 'latest'")] = "latest",
         project_id: Annotated[Union[str, None], typer.Option(help="filter by project_id")] = None,
         omex_src_dir: Annotated[Union[Path, None], typer.Option(help="defaults env.OMEX_SOURCE_DIR")] = None,
         out_dir: Annotated[Union[Path, None], typer.Option(help="defaults to env.OMEX_OUTPUT_DIR")] = None,
-        redo: Annotated[Union[str, None], typer.Option(help="Whether to re-run all files in directory ('all'), nothing that was already run before ('none'), or only new and previously-failed runs ('failed')")] = "all"
+        redo: Annotated[str, typer.Option(help="Whether to re-run all files in directory ('all', the default), nothing that was already run before ('none'), or only new and previously-failed runs ('failed')")] = "all"
 ) -> None:
     load_dotenv()
     data_manager = DataManager(omex_src_dir=omex_src_dir, out_dir=out_dir)
     
-    # if simulator_version is not None and simulator is None:
-    #     raise ValueError("Unable to set simulator_version without specifying a single simulator.")
+    if simulator_version != "latest" and simulator is None:
+        raise ValueError("Unable to set simulator_version without specifying a single simulator.")
 
-    projects = data_manager.read_projects()
+    project_ids = data_manager.get_project_ids()
     runs: list[SimulationRun] = data_manager.read_run_requests()
-    previous = set()
+    previous: set[tuple[Simulator, str]] = set()
     if redo == "none":
         for run in runs:
             previous.add((run.simulator, run.project_id))
     elif redo == "failed":
         for run in runs:
+            if run.status is None:
+                raise ValueError(f"Run {run} has no status")
             if run.status.lower()!="failed":
                 previous.add((run.simulator, run.project_id))
     elif redo != "all":
@@ -53,7 +55,7 @@ def upload_omex(
 
 
     for source_omex in data_manager.get_source_omex_archives():
-        if source_omex.project_id in projects:
+        if source_omex.project_id in project_ids:
             print(f"project {source_omex.project_id} is already validated and published")
             continue
         if project_id is not None and source_omex.project_id != project_id:
@@ -129,8 +131,8 @@ def download_runs(
         except urllib.error.HTTPError as e:
             print("Failure:", e)
 
-def _convert_comparisons_to_dict(comparisons):
-    ret = {}
+def _convert_comparisons_to_dict(comparisons: list[SimulatorComparison]) -> dict[str, dict[tuple[Simulator, Simulator], bool]]:
+    ret: dict[str, dict[tuple[Simulator, Simulator], bool]] = dict()
     for comparison in comparisons:
         projid = comparison.project_id
         if projid not in ret:
@@ -198,8 +200,7 @@ def compare_runs(
                 #        for p in data_manager.read_comparisons()):
                 #     continue
                 data_manager.write_comparison(comp_12)
-                print(f"project {proj_id}, comparing {run1.simulator}:{run1.simulator_version} <=> {run2.simulator}:{run2.simulator_version}, equivalent:",
-                    equivalent, "score:", score)
+                print(f"project {proj_id}, comparing {run1.simulator}:{run1.simulator_version} <=> {run2.simulator}:{run2.simulator_version}, score: {score}, equivalent: {equivalent}")
 
 def _pick_one(project_id: str, validated: list[SimulationRun]) -> SimulationRun:
     if len(validated) == 0:
