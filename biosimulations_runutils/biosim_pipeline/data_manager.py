@@ -60,7 +60,7 @@ class DataManager(object):
         project_ids: list[str] = []
         projects = self.read_projects()
         for project in projects:
-            project_ids.push_back(project.project_id)
+            project_ids.append(project.project_id)
         return project_ids
 
     def write_project(self, project: BiosimulationsProject) -> None:
