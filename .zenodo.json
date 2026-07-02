@@ -1,0 +1,24 @@
+{
+  "upload_type": "software",
+  "title": "biosimulations-runutils",
+  "license": "mit",
+  "creators": [
+    {
+      "name": "Smith, Lucian P.",
+      "affiliation": "University of Washington",
+      "orcid": "0000-0001-7002-6386"
+    },
+    {
+      "name": "Schaff, James C.",
+      "affiliation": "University of Connecticut School of Medicine",
+      "orcid": "0000-0003-3286-7736"
+    },
+    {
+      "name": "Moraru, Ion I.",
+      "affiliation": "University of Connecticut School of Medicine",
+      "orcid": "0000-0002-3746-9676"
+    }
+  ],
+  "description": "<p>biosimulations-runutils provides automation tools for running and comparing biosimulations from OMEX archives (upload, status refresh, download, compare, publish).</p>",
+  "related_identifiers": []
+}
